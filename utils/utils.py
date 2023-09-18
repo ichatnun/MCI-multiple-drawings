@@ -119,7 +119,7 @@ def testDataloader(dataloader, results_dir, batch_size, task_list):
     plt.figure(figsize=(8, 8))
     show(grid)
     plt.savefig(os.path.join(results_dir,
-                             'test_loader_sample_batch.png'), dpi=150)
+                             'test_loader_sample_data_batch.png'), dpi=150)
     
     # Check the values
     for curr_task in task_list:
@@ -129,5 +129,5 @@ def testDataloader(dataloader, results_dir, batch_size, task_list):
         
     # Show example labels
     pd.DataFrame(data=curr_label_batch).to_csv(os.path.join(results_dir, 
-                                                            'test_loader_sample_label.csv'), 
+                                                            'test_loader_sample_label_batch.csv'), 
                                                index=False)
