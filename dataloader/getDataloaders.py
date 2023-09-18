@@ -10,7 +10,7 @@ def getDataloaders(args, add_info):
         
     if add_info['dataset_name'].lower() == 'multiDrawingMCI'.lower():
         
-        from dataloader.datasets.multiDrawingMCI import MultiDrawingMCIDataset2022, makeTransformMultiDrawingMCIDataset2022        
+        from .datasets.multiDrawingMCI import MultiDrawingMCIDataset2022, makeTransformMultiDrawingMCIDataset2022        
         
         # Adjustable parameters
         dataset_dir = os.path.join('./data', 'multiDrawingMCI2022')
