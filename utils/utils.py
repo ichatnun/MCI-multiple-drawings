@@ -117,7 +117,6 @@ def testDataloader(dataloader, results_dir, batch_size, task_list):
     # Show and save the image grid
     plt.figure(figsize=(8, 8))
     show(grid)
-    plt.show()
     plt.savefig(os.path.join(results_dir,
                              'test_loader_sample_data_batch.png'), dpi=150)
     
