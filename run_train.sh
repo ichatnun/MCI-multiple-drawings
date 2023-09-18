@@ -1,3 +1,3 @@
 #!/bin/bash
 
-python train.py --dataset="MultiDrawingMCI" --batch_size=4
+python main.py --include_clock --label_type="hard" --test_dataloader

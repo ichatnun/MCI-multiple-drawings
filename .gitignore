@@ -1,2 +1,10 @@
-
+data
 .DS_Store
+results
+test.yaml
+Untitled.ipynb
+untitled.txt
+.ipynb_checkpoints
+__pycache__
+train
+model
