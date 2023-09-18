@@ -31,6 +31,7 @@ def show(imgs):
         img = F.to_pil_image(img)
         axs[0, i].imshow(np.asarray(img), cmap='gray', vmin=0, vmax=1)
         axs[0, i].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])
+    plt.show()
         
         
 def save_evaluation(labels_true,
