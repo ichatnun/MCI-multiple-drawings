@@ -30,9 +30,7 @@ def show(imgs):
         img = img.detach()
         img = F.to_pil_image(img)
         axs[0, i].imshow(np.asarray(img), cmap='gray', vmin=0, vmax=1)
-        axs[0, i].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])
-    plt.show()
-        
+        axs[0, i].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])        
         
 def save_evaluation(labels_true,
                     labels_predicted, 
@@ -119,6 +117,7 @@ def testDataloader(dataloader, results_dir, batch_size, task_list):
     # Show and save the image grid
     plt.figure(figsize=(8, 8))
     show(grid)
+    plt.show()
     plt.savefig(os.path.join(results_dir,
                              'test_loader_sample_data_batch.png'), dpi=150)
     
