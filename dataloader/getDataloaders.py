@@ -13,10 +13,12 @@ def getDataloaders(args, add_info):
         from .datasets.multiDrawingMCI import MultiDrawingMCIDataset2022, makeTransformMultiDrawingMCIDataset2022        
         
         # Adjustable parameters
-        dataset_dir = os.path.join('./data', 'multiDrawingMCI2022')
+        dataset_dir = os.path.join(os.getcwd(), 'data', 'multiDrawingMCI2022')
         train_fraction = 1 - args.val_fraction - args.test_fraction
-        data_info_df = pd.read_csv('./data/multiDrawingMCI2022/label.csv') # (IDs, MoCA scores)            
-        
+        data_info_df = pd.read_csv(os.path.join(os.getcwd(), 
+                                                'data', 
+                                                'multiDrawingMCI2022', 
+                                                'label.csv')) # (IDs, MoCA scores)         
         # Train, val, test split
         split_info_df = {}
         split_info_df['train'], split_info_df['test'] = train_test_split(data_info_df, 
