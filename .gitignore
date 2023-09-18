@@ -7,4 +7,5 @@ untitled.txt
 .ipynb_checkpoints
 __pycache__
 train
-model
+models
+archives
