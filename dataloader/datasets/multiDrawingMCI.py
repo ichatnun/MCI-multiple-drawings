@@ -38,11 +38,14 @@ class MultiDrawingMCIDataset2022(Dataset):
         
         for curr_task in self.task_list: # ['clock','copy','trail']
             
-            # read_image returns a Tensor of type unit8
+            # read_image returns a Tensor of type unit8 in [0,255]
             curr_image = read_image(os.path.join(self.dataset_dir, 
                                                  'images', 
                                                  str(self.data_info_df.iloc[idx, 0]), 
                                                  curr_task + '.png'))/255.0
+            
+            # Negate the values to make the background value become 0 (instead of 1)
+            curr_image = 1.0 - curr_image
                         
             # Transform the data
             if self.transform:
