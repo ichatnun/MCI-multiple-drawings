@@ -55,12 +55,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     # Create a dictionary to store additional info
-    add_info = {'num_classes': 2,
+    add_info = {'dataset_name': 'multiDrawingMCI',
                 'idx2class_dict': {'0': 'control', '1': 'mci'},
-               'healthy_threshold': 25, # MoCA score of >= 25-> healthy
-               'dataset_name': 'multiDrawingMCI',
-               'batch_size': 64}
-    add_info['class_list'] = [add_info['idx2class_dict'][key] for key in ['0', '1']]
+                'healthy_threshold': 25, # MoCA score of >= 25-> healthy
+                'batch_size': 64}
+    add_info['class_list'] = [add_info['idx2class_dict'][key] for key in add_info['idx2class_dict'].keys()]
+    add_info['num_classes'] = len(add_info['idx2class_dict'].keys())
     
     # Create 'results' folder (Ex. results/multidrawingmci/EXP_...)
     add_info['results_dir'] = os.path.join('results', make_exp_name(args.exp_name))
