@@ -52,6 +52,7 @@ if __name__ == "__main__":
                         default=False, 
                         action='store_true',
                         help="Set to True to get a sample batch (to test out the dataloader)")
+    parser.add_argument('--num_workers', default=8, type=int)
     
     ## Processing the arguments
     args = parser.parse_args()

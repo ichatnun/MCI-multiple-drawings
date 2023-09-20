@@ -77,12 +77,12 @@ def getDataloaders(args, add_info):
             if curr_split_mode in ['test', 'val']:
                 dataloader_dict[curr_split_mode]= DataLoader(curr_dataset, 
                                                              add_info['batch_size'],
-                                                             num_workers=8,
+                                                             num_workers=args.num_workers,
                                                              shuffle=False)
             else:
                 dataloader_dict[curr_split_mode]= DataLoader(curr_dataset, 
                                                              add_info['batch_size'],
-                                                             num_workers=8,
+                                                             num_workers=args.num_workers,
                                                              shuffle=True)
 
         return dataloader_dict
