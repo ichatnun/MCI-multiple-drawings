@@ -6,8 +6,10 @@ import matplotlib.pyplot as plt
 plt.rcParams["savefig.bbox"] = 'tight'
 
 import torch
+from torch.nn import LogSoftmax
 import torchvision.transforms.functional as F
 from torchvision.utils import make_grid
+from torchvision.models import vgg16, VGG16_Weights
 
 from sklearn.metrics import precision_recall_fscore_support, classification_report
 
@@ -31,73 +33,110 @@ def show(imgs):
         img = F.to_pil_image(img)
         axs[0, i].imshow(np.asarray(img), cmap='gray', vmin=0, vmax=1)
         axs[0, i].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])        
+  
+class SoftLabelCrossEntropyLoss(torch.nn.Module):
+    
+    def __init__(self, reduction='sum'):
+        super(SoftLabelCrossEntropyLoss, self).__init__()
+        self.log_softmax = LogSoftmax(dim=1)
+        self.reduction = reduction
         
-def save_evaluation(labels_true,
-                    labels_predicted, 
-                    proba_predicted, 
-                    results_dir, 
-                    class_list,
-                    best_val_loss):
+    def forward(self,prediction,target):
+        pred_log_softmax = self.log_softmax(prediction)
+        loss_each_sample = -(pred_log_softmax*target).sum(axis=1)
+        if self.reduction == 'mean':
+            return loss_each_sample.sum(axis=0)/loss_each_sample.shape[0]
+        else: # default: reduction = 'sum'
+            return loss_each_sample.sum(axis=0)
+        
+# Get model without softmax
+def getModel(model_name, task_list):
     
+    if args.use_pretrained_weight:
+        model = vgg16(weights=VGG16_Weights.IMAGENET1K_V1)
+    else:
+        model = vgg16(weights=None)
+    num_final_features = model.classifier[-1].in_features
+    model.classifier[-1] = nn.Linear(num_final_features, add_info['num_classes'])
     
-    # Deal with one-hot/soft labels
-    if not isinstance(labels_true[0], int):
-        labels_true = [np.argmax(x) for x in labels_true]
+    for param in model.parameters():
+        param.requires_grad = True
+        
+def getVGG16(use_pretrained_weight):
+    if use_pretrained_weight:
+        model = vgg16(weights=VGG16_Weights.IMAGENET1K_V1)
+    else:
+        model = vgg16(weights=None)
+        
+    return model.avgpool
+    # num_final_features = model.classifier[-1].in_features
+    # model.classifier[-1] = nn.Linear(num_final_features, add_info['num_classes'])
+        
+# def save_evaluation(labels_true,
+#                     labels_predicted, 
+#                     proba_predicted, 
+#                     results_dir, 
+#                     class_list,
+#                     best_val_loss):
     
-    precision, recall, fscore, _ = precision_recall_fscore_support(labels_true, labels_predicted)
+#     # Deal with one-hot/soft labels
+#     if not isinstance(labels_true[0], int):
+#         labels_true = [np.argmax(x) for x in labels_true]
     
-    accuracy = np.sum(np.array(labels_true)==np.array(labels_predicted))/len(labels_true)
+#     precision, recall, fscore, _ = precision_recall_fscore_support(labels_true, labels_predicted)
     
-    # Save results
-    df = pd.DataFrame({'true': labels_true,
-                       'predicted': labels_predicted,
-                       'prob': proba_predicted})
-    df.to_csv(os.path.join(results_dir,
-                           'predictions.csv'),index=False)
+#     accuracy = np.sum(np.array(labels_true)==np.array(labels_predicted))/len(labels_true)
     
-    with open(os.path.join(results_dir,'eval_metrics.txt'), "w") as f:
-        f.write(f"best val loss = {best_val_loss}\n")
-        f.write(f"accuracy = {accuracy}\n")
-        f.write(f"precision = {precision}\n")
-        f.write(f"recall = {recall}\n")
-        f.write(f"fscore = {fscore}\n")
-        f.write(classification_report(
-            labels_true,
-            labels_predicted,
-            target_names=class_list))
+#     # Save results
+#     df = pd.DataFrame({'true': labels_true,
+#                        'predicted': labels_predicted,
+#                        'prob': proba_predicted})
+#     df.to_csv(os.path.join(results_dir,
+#                            'predictions.csv'),index=False)
+    
+#     with open(os.path.join(results_dir, 'eval_metrics.txt'), "w") as f:
+#         f.write(f"best val loss = {best_val_loss}\n")
+#         f.write(f"accuracy = {accuracy}\n")
+#         f.write(f"precision = {precision}\n")
+#         f.write(f"recall = {recall}\n")
+#         f.write(f"fscore = {fscore}\n")
+#         f.write(classification_report(
+#             labels_true,
+#             labels_predicted,
+#             target_names=class_list))
         
         
-def test_model(model, dataloader, task, device):
+# def test_model(model, dataloader, task, device):
     
-    softmax_fn = torch.nn.Softmax(dim=1)
-    model.eval()
-    model.to(device)
+#     softmax_fn = torch.nn.Softmax(dim=1)
+#     model.eval()
+#     model.to(device)
     
-    labels_predicted_all = []
-    labels_true_all = []
-    proba_predicted_all = []
+#     labels_predicted_all = []
+#     labels_true_all = []
+#     proba_predicted_all = []
     
-    for inputs, labels in dataloader:
+#     for inputs, labels in dataloader:
         
-        # 'clock', 'copy', 'trail'
-        if len(task) == 1:
-            inputs = inputs[task[0]]
-        else:
-            print('Test function only suports a single task')
-            sys.exit(1)
+#         # 'clock', 'copy', 'trail'
+#         if len(task) == 1:
+#             inputs = inputs[task[0]]
+#         else:
+#             print('Test function only suports a single task')
+#             sys.exit(1)
 
-        inputs = inputs.to(device)
-        outputs = model(inputs)
+#         inputs = inputs.to(device)
+#         outputs = model(inputs)
 
-        # Output: (max val, max_indices)
-        outputs = softmax_fn(outputs)
-        proba, preds = torch.max(outputs, 1)
+#         # Output: (max val, max_indices)
+#         outputs = softmax_fn(outputs)
+#         proba, preds = torch.max(outputs, 1)
         
-        labels_true_all += labels.tolist()
-        labels_predicted_all += preds.detach().tolist()
-        proba_predicted_all += proba.detach().tolist()
+#         labels_true_all += labels.tolist()
+#         labels_predicted_all += preds.detach().tolist()
+#         proba_predicted_all += proba.detach().tolist()
         
-    return labels_true_all, labels_predicted_all, proba_predicted_all
+#     return labels_true_all, labels_predicted_all, proba_predicted_all
 
 
 # Test the functionality of a Dataloader

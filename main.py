@@ -12,10 +12,12 @@ import torchvision
 from torchvision import datasets, models, transforms
 from torchvision.models import vgg16, VGG16_Weights
 
+import lightning as pl # conda install lightning -c conda-forge
+
 from dataloader.getDataloaders import getDataloaders
-from utils.utils import make_exp_name, save_evaluation, test_model, testDataloader
-from train.train_single_input import train_model
-from train.utils_train import SoftLabelCrossEntropyLoss
+from utils.utils import make_exp_name, testDataloader, getVGG16, SoftLabelCrossEntropyLoss#, save_evaluation, test_model
+# from train.train_single_input import train_model
+# from train.utils_train import SoftLabelCrossEntropyLoss
 
 
 if __name__ == "__main__":
@@ -93,7 +95,7 @@ if __name__ == "__main__":
     
     ## Generate dataloders: dataloader_dict.keys -> 'train', 'val', 'test'
     dataloader_dict = getDataloaders(args, add_info)
-    
+        
     ## Try getting a batch from the test Dataloader
     if args.test_dataloader:
         testDataloader(dataloader_dict['test'], 
@@ -101,16 +103,70 @@ if __name__ == "__main__":
                        add_info['batch_size'], 
                        add_info['task_list'])
         
-    pdb.set_trace()
-        
     # Define the loss function
     if args.label_type == 'soft':
         loss_fn = SoftLabelCrossEntropyLoss(reduction='mean')
     elif args.label_type == 'raw':
         add_info['num_classes'] = 1
     else:
-        loss_fn = torch.nn.CrossEntropyLoss(reduction='mean')        
+        loss_fn = torch.nn.CrossEntropyLoss(reduction='mean')
+
+    model = getVGG16(True)
+    pdb.set_trace()
+    
+    # Create a model
+    if args.use_pretrained_weight:
+        model = vgg16(weights=VGG16_Weights.IMAGENET1K_V1)
+    else:
+        model = vgg16(weights=None)
+    num_final_features = model.classifier[-1].in_features
+    model.classifier[-1] = nn.Linear(num_final_features, add_info['num_classes'])
+    
+    for param in model.parameters():
+        param.requires_grad = True
         
+    # Creat module dict here
+    nn.ModuleDict({'clock': model1, 'copy': model2})
+                
+    # define the LightningModule
+    class LitVGG16(pl.LightningModule):
+        
+        def __init__(self, model):
+            super().__init__()
+            self.model = model_module_dict
+            self.task_list = task_list
+
+        def training_step(self, batch, batch_idx):
+            # training_step defines the train loop.
+            # it is independent of forward
+            x, y = batch
+#             temp = torch([])...
+#             for curr_task in self.model.keys():    
+#                 temp.append(self.model(x[curr_task]))
+                
+            # loss = nn.functional.mse_loss(y_predicted, y)
+            
+            # Logging to TensorBoard (if installed) by default
+            self.log("train_loss", loss)
+            return loss
+
+        def configure_optimizers(self):
+            return torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+
+
+    # Create the model
+    model = LitVGG16(model, add_info['task_list'])
+
+    # Train the model
+    trainer = pl.Trainer(max_epochs=args.num_epochs, 
+                         devices=[2], 
+                         accelerator="gpu", 
+                         log_every_n_steps=10)
+    trainer.fit(model=model, 
+                train_dataloaders=dataloader_dict['train'], 
+                val_dataloaders=dataloader_dict['val'])
+    
+    pdb.set_trace()
 #     ## Create our model
 #     model = vgg16(weights=VGG16_Weights.IMAGENET1K_V1)
 #     num_final_features = model.classifier[-1].in_features

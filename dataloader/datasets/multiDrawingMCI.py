@@ -51,7 +51,7 @@ class MultiDrawingMCIDataset2022(Dataset):
             if self.transform:
                 curr_image = self.transform(curr_image)
             
-            image_dict[curr_task] = curr_image;
+            image_dict[curr_task] = curr_image.float();
           
         ## Labels
         label = self.data_info_df.iloc[idx, 1]
@@ -121,7 +121,7 @@ def makeTransformMultiDrawingMCIDataset2022(args, add_info, split_mode='train'):
     else:
         # Healthy control = 0, MCI = 1
         target_transform = Lambda(lambda x: get_hard_label(x, add_info['healthy_threshold'])) # 2-output-node version
-        # target_transform = Lambda(lambda x: 1 if x < add_info['healthy_threshold'] else 0) # 1-output-node version                                
+        # target_transform = Lambda(lambda x: 1 if x < add_info['healthy_threshold'] else 0) # 1-output-node version       
                                                                                   
     return transform, target_transform
     
@@ -162,18 +162,15 @@ class CustomPad(object):
 
         return image
             
-    
 def get_soft_label(x, healthy_threshold=25):
     # soft label = 1 - sigmoid(x-24.5). 
     prob_mci = 1 - sigmoid(x - (healthy_threshold - 0.5))
-    return np.asarray([1 - prob_mci, prob_mci])
-
+    return np.asarray([1 - prob_mci, prob_mci], np.float32)
 
 def get_hard_label(x, healthy_threshold=25):
     
     prob_mci = (x < healthy_threshold)*1.0    
-    return np.asarray([1 - prob_mci, prob_mci])
-
+    return np.asarray([1 - prob_mci, prob_mci], np.float32)
 
 def sigmoid(x):
     return 1/(1 + np.exp(-x))

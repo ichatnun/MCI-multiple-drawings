@@ -15,10 +15,31 @@ def getDataloaders(args, add_info):
         # Adjustable parameters
         dataset_dir = os.path.join(os.getcwd(), 'data', 'multiDrawingMCI2022')
         train_fraction = 1 - args.val_fraction - args.test_fraction
-        data_info_df = pd.read_csv(os.path.join(os.getcwd(), 
-                                                'data', 
-                                                'multiDrawingMCI2022', 
-                                                'label.csv')) # (IDs, MoCA scores)         
+        label_path = os.path.join(os.getcwd(), 'data', 'multiDrawingMCI2022', 'label.csv')
+        
+        # Create the 'data' directory if it does not exist
+        if not os.path.exists(dataset_dir):
+            os.makedirs(dataset_dir)
+            
+        # Download images (if needed)
+        if not os.path.exists(os.path.join(dataset_dir, 'images')):
+            print("*************** Downloading images ***************")
+            os.system(f"wget -O images.zip https://github.com/cccnlab/MCI-multiple-drawings/raw/main/images.zip")
+            os.system(f"unzip -q images.zip -d {dataset_dir}/")
+            os.system(f"rm images.zip")
+            print("*************** Done ***************\n")
+            
+        # Download the labels (if needed)
+        if not os.path.exists(label_path):
+            print("*************** Downloading the labels ***************")
+            os.system(f"wget -P {dataset_dir} https://github.com/cccnlab/MCI-multiple-drawings/raw/main/label.csv")
+            print("*************** Done ***************\n")
+            
+        
+        # Load label into a Pandas dataframe
+        data_info_df = pd.read_csv(label_path) # (IDs, MoCA scores) 
+        
+        
         # Train, val, test split
         split_info_df = {}
         split_info_df['train'], split_info_df['test'] = train_test_split(data_info_df, 
@@ -56,10 +77,12 @@ def getDataloaders(args, add_info):
             if curr_split_mode in ['test', 'val']:
                 dataloader_dict[curr_split_mode]= DataLoader(curr_dataset, 
                                                              add_info['batch_size'],
+                                                             num_workers=8,
                                                              shuffle=False)
             else:
                 dataloader_dict[curr_split_mode]= DataLoader(curr_dataset, 
                                                              add_info['batch_size'],
+                                                             num_workers=8,
                                                              shuffle=True)
 
         return dataloader_dict
