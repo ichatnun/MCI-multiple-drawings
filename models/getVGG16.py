@@ -1,5 +1,5 @@
 import torch
-from torch.nn import Sequential, Conv1D, Linear
+from torch.nn import Sequential, Conv1d, Linear
 from torchvision.models import vgg16, VGG16_Weights
 
 class VGG16Backbone(torch.nn.Module):
