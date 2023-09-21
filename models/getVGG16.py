@@ -1,5 +1,5 @@
 import torch
-from torch.nn import Sequential, Conv1d, Linear
+from torch.nn import Sequential, Conv2d, Linear
 from torchvision.models import vgg16, VGG16_Weights
 
 class VGG16Backbone(torch.nn.Module):
@@ -15,7 +15,7 @@ class VGG16Backbone(torch.nn.Module):
             
         final_num_channels = vgg16_model.features[-3].out_channels    
         self.backbone = Sequential(*list(vgg16_model.features.children()),
-                                   Conv1d(final_num_channels, self.hidden_dim, final_num_channels))
+                                   Conv2d(final_num_channels, self.hidden_dim, kernel_size=1))
 
         if freeze_backbone:
             for param in self.backbone.parameters():
