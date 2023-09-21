@@ -7,7 +7,9 @@ import torch
 import torchvision
 
 import lightning as pl # conda install lightning -c conda-forge
-from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.loggers import CSVLogger
+
+# from lightning.pytorch.loggers import TensorBoardLogger
 
 from models.getModel import getModel
 from dataloader.getDataloaders import getDataloaders
@@ -66,8 +68,8 @@ if __name__ == "__main__":
     # Create 'results' folder (Ex. results/multidrawingmci/EXP_...)
     add_info['results_dir'] = os.path.join('results', make_exp_name(args.exp_name))
     os.makedirs(add_info['results_dir'], exist_ok=False)
-    os.makedirs(os.path.join(add_info['results_dir'], 'temp'),
-                exist_ok=False) # Store temp info during training
+    # os.makedirs(os.path.join(add_info['results_dir'], 'temp'),
+    #             exist_ok=False) # Store temp info during training
     
     # Check val and test fractions
     if args.val_fraction + args.test_fraction >= 1:
@@ -124,6 +126,7 @@ if __name__ == "__main__":
             super().__init__()
             self.model = model
             self.loss_fn = loss_fn
+            self.softmax = torch.nn.Softmax(dim=1)
 
         def training_step(self, batch, batch_idx):
             # training_step defines the train loop.
@@ -137,6 +140,23 @@ if __name__ == "__main__":
             self.log("train_loss", loss)
             
             return loss
+        
+        def forward(self, x):
+            logits_predicted = self.model(x) # Without softmax
+            return self.softmax(logits_predicted)
+        
+        def validation_step(self, batch, batch_idx):
+            # training_step defines the train loop.
+            # it is independent of forward
+            x, y = batch
+            logits_predicted = self.model(x) # Without softmax
+
+            loss = self.loss_fn(logits_predicted, y)
+
+            # Log results
+            self.log("val_loss", loss)
+
+            return loss
 
         def configure_optimizers(self):
             return torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
@@ -145,19 +165,30 @@ if __name__ == "__main__":
     # Create the model
     model = LitVGG16(model, loss_fn)
 
-    pdb.set_trace()
+    # Prepare logger
+    logger = CSVLogger(save_dir=add_info['results_dir'])
+    # logger = TensorBoardLogger(save_dir=add_info['results_dir'])
+    
+    # Prepare callbacks
+    checkpoint_callback = ModelCheckpoint(dirpath=add_info['results_dir'], 
+                                          filename='{epoch}-{val_loss:.2f}', 
+                                          save_top_k=1, 
+                                          every_n_epochs=1)
     
     # Train the model
     trainer = pl.Trainer(max_epochs=args.num_epochs, 
+                         logger=logger,
+                         callbacks=[checkpoint_callback],
                          devices=[2], 
                          accelerator="gpu", 
                          log_every_n_steps=10)
+
     
     trainer.fit(model=model, 
                 train_dataloaders=dataloader_dict['train'], 
                 val_dataloaders=dataloader_dict['val'])
     
-    pdb.set_trace()
+    
 #     ## Create our model
 #     model = vgg16(weights=VGG16_Weights.IMAGENET1K_V1)
 #     num_final_features = model.classifier[-1].in_features
