@@ -6,10 +6,8 @@ import matplotlib.pyplot as plt
 plt.rcParams["savefig.bbox"] = 'tight'
 
 import torch
-from torch.nn import LogSoftmax
-import torchvision.transforms.functional as F
 from torchvision.utils import make_grid
-
+import torchvision.transforms.functional as F
 from sklearn.metrics import precision_recall_fscore_support, classification_report
 
 
@@ -32,23 +30,37 @@ def show(imgs):
         img = F.to_pil_image(img)
         axs[0, i].imshow(np.asarray(img), cmap='gray', vmin=0, vmax=1)
         axs[0, i].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])        
-  
-class SoftLabelCrossEntropyLoss(torch.nn.Module):
-    
-    def __init__(self, reduction='sum'):
-        super(SoftLabelCrossEntropyLoss, self).__init__()
-        self.log_softmax = LogSoftmax(dim=1)
-        self.reduction = reduction
-        
-    def forward(self,prediction,target):
-        pred_log_softmax = self.log_softmax(prediction)
-        loss_each_sample = -(pred_log_softmax*target).sum(axis=1)
-        if self.reduction == 'mean':
-            return loss_each_sample.sum(axis=0)/loss_each_sample.shape[0]
-        else: # default: reduction = 'sum'
-            return loss_each_sample.sum(axis=0)
 
-         
+        
+def testDataloader(dataloader, results_dir, batch_size, task_list):
+    
+    # Get one batch
+    curr_data_batch, curr_label_batch =  next(iter(dataloader))
+    
+    temp_list = []
+    for idx in range(batch_size):
+        for curr_task in task_list:
+            temp_list.append(curr_data_batch[curr_task][idx])
+    
+    # Create an image grid using all the images in the batch
+    grid = make_grid(temp_list)
+    
+    # Show and save the image grid
+    plt.figure(figsize=(8, 8))
+    show(grid)
+    plt.savefig(os.path.join(results_dir,
+                             'test_loader_sample_data_batch.png'), dpi=150)
+    
+    # Check the values
+    for curr_task in task_list:
+        max_val = np.max(curr_data_batch[curr_task].numpy())
+        min_val = np.min(curr_data_batch[curr_task].numpy())
+        print(f"The {curr_task} data are in the range ({min_val}, {max_val})") #(0.0, 1.0)
+        
+    # Show example labels
+    pd.DataFrame(data=curr_label_batch).to_csv(os.path.join(results_dir, 
+                                                            'test_loader_sample_label_batch.csv'), 
+                                               index=False)
 # def save_evaluation(labels_true,
 #                     labels_predicted, 
 #                     proba_predicted, 
@@ -115,34 +127,19 @@ class SoftLabelCrossEntropyLoss(torch.nn.Module):
         
 #     return labels_true_all, labels_predicted_all, proba_predicted_all
 
+# class SoftLabelCrossEntropyLoss(torch.nn.Module):
+    
+#     def __init__(self, reduction='sum'):
+#         super(SoftLabelCrossEntropyLoss, self).__init__()
+#         self.log_softmax = LogSoftmax(dim=1)
+#         self.reduction = reduction
+        
+#     def forward(self,prediction,target):
+#         pred_log_softmax = self.log_softmax(prediction)
+#         loss_each_sample = -(pred_log_softmax*target).sum(axis=1)
+#         if self.reduction == 'mean':
+#             return loss_each_sample.sum(axis=0)/loss_each_sample.shape[0]
+#         else: # default: reduction = 'sum'
+#             return loss_each_sample.sum(axis=0)
 
 # Test the functionality of a Dataloader
-def testDataloader(dataloader, results_dir, batch_size, task_list):
-    
-    # Get one batch
-    curr_data_batch, curr_label_batch =  next(iter(dataloader))
-    
-    temp_list = []
-    for idx in range(batch_size):
-        for curr_task in task_list:
-            temp_list.append(curr_data_batch[curr_task][idx])
-    
-    # Create an image grid using all the images in the batch
-    grid = make_grid(temp_list)
-    
-    # Show and save the image grid
-    plt.figure(figsize=(8, 8))
-    show(grid)
-    plt.savefig(os.path.join(results_dir,
-                             'test_loader_sample_data_batch.png'), dpi=150)
-    
-    # Check the values
-    for curr_task in task_list:
-        max_val = np.max(curr_data_batch[curr_task].numpy())
-        min_val = np.min(curr_data_batch[curr_task].numpy())
-        print(f"The {curr_task} data are in the range ({min_val}, {max_val})") #(0.0, 1.0)
-        
-    # Show example labels
-    pd.DataFrame(data=curr_label_batch).to_csv(os.path.join(results_dir, 
-                                                            'test_loader_sample_label_batch.csv'), 
-                                               index=False)

@@ -1,6 +1,6 @@
 import sys
 
-def getModel(model_name, 
+def getModel(model_name,
              num_classes, 
              task_list, 
              use_pretrained_weight, 

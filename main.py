@@ -5,13 +5,13 @@ import matplotlib.pyplot as plt
 
 import torch
 import torchvision
+
 import lightning as pl # conda install lightning -c conda-forge
+from lightning.pytorch.loggers import TensorBoardLogger
 
 from models.getModel import getModel
 from dataloader.getDataloaders import getDataloaders
-from utils.utils import make_exp_name, testDataloader, SoftLabelCrossEntropyLoss#, save_evaluation, test_model
-# from train.train_single_input import train_model
-# from train.utils_train import SoftLabelCrossEntropyLoss
+from utils.utils import make_exp_name, testDataloader
 
 
 if __name__ == "__main__":
@@ -103,12 +103,11 @@ if __name__ == "__main__":
                        add_info['task_list'])
         
     # Define the loss function
-    if args.label_type == 'soft':
-        loss_fn = SoftLabelCrossEntropyLoss(reduction='mean')
+    if args.label_type in ['hard', 'soft']:
+        loss_fn = torch.nn.CrossEntropyLoss(reduction='mean')
     elif args.label_type == 'raw':
         add_info['num_classes'] = 1
-    else:
-        loss_fn = torch.nn.CrossEntropyLoss(reduction='mean')
+        loss_fn = torch.nn.MSELoss(reduction='mean')
                 
     # Create a ModuleDict model
     model = getModel(args.model_name, 
@@ -121,20 +120,22 @@ if __name__ == "__main__":
     # Define the LightningModule
     class LitVGG16(pl.LightningModule):
         
-        def __init__(self, model):
+        def __init__(self, model, loss_fn):
             super().__init__()
             self.model = model
+            self.loss_fn = loss_fn
 
         def training_step(self, batch, batch_idx):
             # training_step defines the train loop.
             # it is independent of forward
             x, y = batch
-            y_predicted = self.model(x)
+            logits_predicted = self.model(x) # Without softmax
                 
-            # loss = nn.functional.mse_loss(y_predicted, y)
+            loss = self.loss_fn(logits_predicted, y)
             
-            # Logging to TensorBoard (if installed) by default
+            # Log results
             self.log("train_loss", loss)
+            
             return loss
 
         def configure_optimizers(self):
@@ -142,13 +143,16 @@ if __name__ == "__main__":
 
 
     # Create the model
-    model = LitVGG16(model, add_info['task_list'])
+    model = LitVGG16(model, loss_fn)
 
+    pdb.set_trace()
+    
     # Train the model
     trainer = pl.Trainer(max_epochs=args.num_epochs, 
                          devices=[2], 
                          accelerator="gpu", 
                          log_every_n_steps=10)
+    
     trainer.fit(model=model, 
                 train_dataloaders=dataloader_dict['train'], 
                 val_dataloaders=dataloader_dict['val'])

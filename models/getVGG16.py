@@ -34,6 +34,7 @@ class VGG16Backbone(torch.nn.Module):
     
     
 class multiInputVGG16(torch.nn.Module):
+    
     def __init__(self, 
                  num_classes, 
                  task_list, 
@@ -49,11 +50,11 @@ class multiInputVGG16(torch.nn.Module):
             self.model_module_dict[curr_task] = VGG16Backbone(use_pretrained_weight,
                                                                freeze_backbone)
             
-        # Create the classification layer
+        # Create the final layer
         hidden_dim_one_task = self.model_module_dict[curr_task].get_hidden_dim()    
-        self.classif = Linear(hidden_dim_one_task*len(task_list),
-                              num_classes, 
-                              bias=True)
+        self.final = Linear(hidden_dim_one_task*len(task_list),
+                            num_classes,
+                            bias=True)
 
     def forward(self, x):
         
@@ -66,4 +67,4 @@ class multiInputVGG16(torch.nn.Module):
                 x_concat = torch.cat((x_concat, x_backbone_processed), axis=-1)
     
         # Pass the concatenated results to the linear classifier (without softmax)
-        return self.classif(x_concat)
+        return self.final(x_concat)
