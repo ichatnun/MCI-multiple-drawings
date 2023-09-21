@@ -15,7 +15,7 @@ class VGG16Backbone(torch.nn.Module):
             
         final_num_channels = vgg16_model.features[-3].out_channels    
         self.backbone = Sequential(*list(vgg16_model.features.children()),
-                                   Conv1d(final_num_channels, self.hidden_dim))
+                                   Conv1d(final_num_channels, self.hidden_dim, final_num_channels))
 
         if freeze_backbone:
             for param in self.backbone.parameters():
