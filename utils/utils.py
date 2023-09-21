@@ -9,7 +9,6 @@ import torch
 from torch.nn import LogSoftmax
 import torchvision.transforms.functional as F
 from torchvision.utils import make_grid
-from torchvision.models import vgg16, VGG16_Weights
 
 from sklearn.metrics import precision_recall_fscore_support, classification_report
 
@@ -48,30 +47,8 @@ class SoftLabelCrossEntropyLoss(torch.nn.Module):
             return loss_each_sample.sum(axis=0)/loss_each_sample.shape[0]
         else: # default: reduction = 'sum'
             return loss_each_sample.sum(axis=0)
-        
-# Get model without softmax
-def getModel(model_name, task_list):
-    
-    if args.use_pretrained_weight:
-        model = vgg16(weights=VGG16_Weights.IMAGENET1K_V1)
-    else:
-        model = vgg16(weights=None)
-    num_final_features = model.classifier[-1].in_features
-    model.classifier[-1] = nn.Linear(num_final_features, add_info['num_classes'])
-    
-    for param in model.parameters():
-        param.requires_grad = True
-        
-def getVGG16(use_pretrained_weight):
-    if use_pretrained_weight:
-        model = vgg16(weights=VGG16_Weights.IMAGENET1K_V1)
-    else:
-        model = vgg16(weights=None)
-        
-    return model.avgpool
-    # num_final_features = model.classifier[-1].in_features
-    # model.classifier[-1] = nn.Linear(num_final_features, add_info['num_classes'])
-        
+
+         
 # def save_evaluation(labels_true,
 #                     labels_predicted, 
 #                     proba_predicted, 
