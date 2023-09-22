@@ -89,8 +89,9 @@ if __name__ == "__main__":
         
     ## Detect if we have a GPU available
     if torch.cuda.is_available():
-        add_info['device'] = torch.device("cuda:0")
-        gpu_list = [0]
+        num_gpus = torch.cuda.device_count() 
+        add_info['device'] = torch.device(f"cuda:{num_gpus-1}")
+        gpu_list = [num_gpus-1]
     else:
         add_info['device'] = torch.device("cpu")
     print(f"device: {add_info['device']}")

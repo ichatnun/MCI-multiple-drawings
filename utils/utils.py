@@ -95,9 +95,7 @@ def save_evaluation(labels_true,
     # Deal with one-hot/soft labels
     if not isinstance(labels_true[0], int):
         labels_true = [np.argmax(x) for x in labels_true]
-    
-    pdb.set_trace()
-    
+        
     precision, recall, fscore, _ = precision_recall_fscore_support(labels_true, labels_predicted)
     
     accuracy = np.sum(np.array(labels_true)==np.array(labels_predicted))/len(labels_true)
