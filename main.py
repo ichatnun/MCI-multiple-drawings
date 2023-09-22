@@ -8,12 +8,11 @@ import torchvision
 
 import lightning as pl # conda install lightning -c conda-forge
 from lightning.pytorch.loggers import CSVLogger
-
-# from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.callbacks import ModelCheckpoint
 
 from models.getModel import getModel
 from dataloader.getDataloaders import getDataloaders
-from utils.utils import make_exp_name, testDataloader
+from utils.utils import make_exp_name, testDataloader, test_model, save_evaluation
 
 
 if __name__ == "__main__":
@@ -163,65 +162,41 @@ if __name__ == "__main__":
 
 
     # Create the model
-    model = LitVGG16(model, loss_fn)
+    modelLit = LitVGG16(model, loss_fn)
 
     # Prepare logger
     logger = CSVLogger(save_dir=add_info['results_dir'])
-    # logger = TensorBoardLogger(save_dir=add_info['results_dir'])
     
     # Prepare callbacks
     checkpoint_callback = ModelCheckpoint(dirpath=add_info['results_dir'], 
                                           filename='{epoch}-{val_loss:.2f}', 
-                                          save_top_k=1, 
+                                          monitor='val_loss',
+                                          mode='min',
+                                          save_top_k=2, 
                                           every_n_epochs=1)
     
     # Train the model
     trainer = pl.Trainer(max_epochs=args.num_epochs, 
                          logger=logger,
                          callbacks=[checkpoint_callback],
-                         devices=[2], 
-                         accelerator="gpu", 
-                         log_every_n_steps=10)
+                         devices=[add_info['device']], 
+                         log_every_n_steps=dataloader_dict['train'].__len__(),
+                         accelerator="gpu")
 
-    
-    trainer.fit(model=model, 
+    trainer.fit(model=modelLit, 
                 train_dataloaders=dataloader_dict['train'], 
                 val_dataloaders=dataloader_dict['val'])
     
+    # Load the best model
+    trained_model = LitVGG16.load_from_checkpoint(checkpoint_callback.best_model_path, model=model, loss_fn=loss_fn)
     
-#     ## Create our model
-#     model = vgg16(weights=VGG16_Weights.IMAGENET1K_V1)
-#     num_final_features = model.classifier[-1].in_features
-#     model.classifier[-1] = nn.Linear(num_final_features, add_info['num_classes'])
-    
-#     for param in model.parameters():
-#         param.requires_grad = True
-
-#     optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-    
-#     ## Train the model
-#     model = model.to(add_info['device'])
-#     trained_model, history = train_model(model,
-#                                          dataloader_dict,
-#                                          loss_fn,
-#                                          optimizer,
-#                                          num_epochs=args.num_epochs,
-#                                          device=add_info['device'],
-#                                          results_dir=add_info['results_dir'],
-#                                          task=add_info['task_list'])
-    
-    
-#     ## Test the model
-#     labels_true_all,labels_predicted_all, proba_predicted_all = test_model(trained_model,
-#                                                  dataloader_dict['test'], 
-#                                                         add_info['task_list'], 
-#                                                         add_info['device'])
-
-#     best_val_loss = np.max(history['val_loss'])
-    
-#     save_evaluation(labels_true_all,
-#                     labels_predicted_all, 
-#                     proba_predicted_all,
-#                     add_info['results_dir'], 
-#                     add_info['class_list'],
-#                     best_val_loss)
+    # Test the model
+    labels_test_true, labels_test_predicted, proba_test_predicted = test_model(trained_model, 
+                                                                               dataloader_dict['test'], 
+                                                                               add_info['device'])
+    # Save evaluation metrics    
+    save_evaluation(labels_test_true,
+                    labels_test_predicted, 
+                    proba_test_predicted,
+                    add_info['results_dir'], 
+                    add_info['class_list'])

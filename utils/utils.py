@@ -61,71 +61,64 @@ def testDataloader(dataloader, results_dir, batch_size, task_list):
     pd.DataFrame(data=curr_label_batch).to_csv(os.path.join(results_dir, 
                                                             'test_loader_sample_label_batch.csv'), 
                                                index=False)
-# def save_evaluation(labels_true,
-#                     labels_predicted, 
-#                     proba_predicted, 
-#                     results_dir, 
-#                     class_list,
-#                     best_val_loss):
     
-#     # Deal with one-hot/soft labels
-#     if not isinstance(labels_true[0], int):
-#         labels_true = [np.argmax(x) for x in labels_true]
-    
-#     precision, recall, fscore, _ = precision_recall_fscore_support(labels_true, labels_predicted)
-    
-#     accuracy = np.sum(np.array(labels_true)==np.array(labels_predicted))/len(labels_true)
-    
-#     # Save results
-#     df = pd.DataFrame({'true': labels_true,
-#                        'predicted': labels_predicted,
-#                        'prob': proba_predicted})
-#     df.to_csv(os.path.join(results_dir,
-#                            'predictions.csv'),index=False)
-    
-#     with open(os.path.join(results_dir, 'eval_metrics.txt'), "w") as f:
-#         f.write(f"best val loss = {best_val_loss}\n")
-#         f.write(f"accuracy = {accuracy}\n")
-#         f.write(f"precision = {precision}\n")
-#         f.write(f"recall = {recall}\n")
-#         f.write(f"fscore = {fscore}\n")
-#         f.write(classification_report(
-#             labels_true,
-#             labels_predicted,
-#             target_names=class_list))
-        
-        
-# def test_model(model, dataloader, task, device):
-    
-#     softmax_fn = torch.nn.Softmax(dim=1)
-#     model.eval()
-#     model.to(device)
-    
-#     labels_predicted_all = []
-#     labels_true_all = []
-#     proba_predicted_all = []
-    
-#     for inputs, labels in dataloader:
-        
-#         # 'clock', 'copy', 'trail'
-#         if len(task) == 1:
-#             inputs = inputs[task[0]]
-#         else:
-#             print('Test function only suports a single task')
-#             sys.exit(1)
+def test_model(model, dataloader, device):
 
-#         inputs = inputs.to(device)
-#         outputs = model(inputs)
+    model.eval()
+    model.to(device)
 
-#         # Output: (max val, max_indices)
-#         outputs = softmax_fn(outputs)
-#         proba, preds = torch.max(outputs, 1)
+    labels_predicted_all = []
+    labels_true_all = []
+    proba_predicted_all = []
+
+    for inputs, labels in dataloader:
+
+        inputs = inputs.to(device)
+        outputs = model(inputs) #(max val, max_indices)
+        proba, preds = torch.max(outputs, 1)
+
+        labels_true_all += labels.tolist()
+        labels_predicted_all += preds.detach().tolist()
+        proba_predicted_all += proba.detach().tolist()
+
+    return labels_true_all, labels_predicted_all, proba_predicted_all
+    
+    
+def save_evaluation(labels_true,
+                    labels_predicted, 
+                    proba_predicted, 
+                    results_dir, 
+                    class_list):
+    
+    # Deal with one-hot/soft labels
+    if not isinstance(labels_true[0], int):
+        labels_true = [np.argmax(x) for x in labels_true]
+    
+    pdb.set_trace()
+    
+    precision, recall, fscore, _ = precision_recall_fscore_support(labels_true, labels_predicted)
+    
+    accuracy = np.sum(np.array(labels_true)==np.array(labels_predicted))/len(labels_true)
+    
+    # Save results
+    df = pd.DataFrame({'true': labels_true,
+                       'predicted': labels_predicted,
+                       'prob': proba_predicted})
+    df.to_csv(os.path.join(results_dir,
+                           'predictions.csv'),index=False)
+    
+    with open(os.path.join(results_dir, 'eval_metrics.txt'), "w") as f:
+        # f.write(f"best val loss = {best_val_loss}\n")
+        f.write(f"accuracy = {accuracy}\n")
+        f.write(f"precision = {precision}\n")
+        f.write(f"recall = {recall}\n")
+        f.write(f"fscore = {fscore}\n")
+        f.write(classification_report(
+            labels_true,
+            labels_predicted,
+            target_names=class_list))
         
-#         labels_true_all += labels.tolist()
-#         labels_predicted_all += preds.detach().tolist()
-#         proba_predicted_all += proba.detach().tolist()
         
-#     return labels_true_all, labels_predicted_all, proba_predicted_all
 
 # class SoftLabelCrossEntropyLoss(torch.nn.Module):
     
@@ -142,4 +135,3 @@ def testDataloader(dataloader, results_dir, batch_size, task_list):
 #         else: # default: reduction = 'sum'
 #             return loss_each_sample.sum(axis=0)
 
-# Test the functionality of a Dataloader

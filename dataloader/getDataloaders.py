@@ -78,11 +78,13 @@ def getDataloaders(args, add_info):
                 dataloader_dict[curr_split_mode]= DataLoader(curr_dataset, 
                                                              add_info['batch_size'],
                                                              num_workers=args.num_workers,
-                                                             shuffle=False)
+                                                             shuffle=False, 
+                                                             drop_last=False)
             else:
                 dataloader_dict[curr_split_mode]= DataLoader(curr_dataset, 
                                                              add_info['batch_size'],
                                                              num_workers=args.num_workers,
-                                                             shuffle=True)
+                                                             shuffle=True,
+                                                             drop_last=False)
 
         return dataloader_dict
