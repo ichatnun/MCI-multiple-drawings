@@ -89,6 +89,7 @@ if __name__ == "__main__":
         
     ## Detect if we have a GPU available
     if torch.cuda.is_available():
+        pdb.set_trace()
         num_gpus = torch.cuda.device_count() 
         add_info['device'] = torch.device(f"cuda:{num_gpus-1}")
         gpu_list = [num_gpus-1]

@@ -13,11 +13,7 @@ from sklearn.metrics import precision_recall_fscore_support, classification_repo
 
 # Make experiment name
 def make_exp_name(name=''):
-    out_name = 'EXP_'+datetime.now().strftime("%Y-%m-%d-%X")
-    if name and len(name) > 0:
-        out_name += '_{}'.format(name)
-    return out_name
-
+    return name + '_' + datetime.now().strftime("%Y-%m-%d-%X")
 
 # Show Taken from https://pytorch.org/vision/stable/auto_examples/plot_visualization_utils.html
 def show(imgs):
