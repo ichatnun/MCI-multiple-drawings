@@ -32,7 +32,7 @@ def show(imgs):
         axs[0, i].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])        
 
         
-def testDataloader(dataloader, results_dir, batch_size, task_list):
+def test_dataloader(dataloader, results_dir, batch_size, task_list):
     
     # Get one batch
     curr_data_batch, curr_label_batch =  next(iter(dataloader))
@@ -72,8 +72,10 @@ def test_model(model, dataloader, device):
     proba_predicted_all = []
 
     for inputs, labels in dataloader:
-
-        inputs = inputs.to(device)
+        
+        for key, value in inputs.items():
+            inputs[key] = inputs[key].to(device)
+    
         outputs = model(inputs) #(max val, max_indices)
         proba, preds = torch.max(outputs, 1)
 

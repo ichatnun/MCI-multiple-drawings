@@ -10,9 +10,9 @@ import lightning as pl # conda install lightning -c conda-forge
 from lightning.pytorch.loggers import CSVLogger
 from lightning.pytorch.callbacks import ModelCheckpoint
 
-from models.getModel import getModel
-from dataloader.getDataloaders import getDataloaders
-from utils.utils import make_exp_name, testDataloader, test_model, save_evaluation
+from models.get_model import get_model
+from dataloader.get_dataloaders import get_dataloaders
+from utils.utils import make_exp_name, test_dataloader, test_model, save_evaluation
 
 
 if __name__ == "__main__":
@@ -67,8 +67,6 @@ if __name__ == "__main__":
     # Create 'results' folder (Ex. results/multidrawingmci/EXP_...)
     add_info['results_dir'] = os.path.join('results', make_exp_name(args.exp_name))
     os.makedirs(add_info['results_dir'], exist_ok=False)
-    # os.makedirs(os.path.join(add_info['results_dir'], 'temp'),
-    #             exist_ok=False) # Store temp info during training
     
     # Check val and test fractions
     if args.val_fraction + args.test_fraction >= 1:
@@ -90,18 +88,22 @@ if __name__ == "__main__":
         add_info['task_list'].append('trail')
         
     ## Detect if we have a GPU available
-    add_info['device'] = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    if torch.cuda.is_available():
+        add_info['device'] = torch.device("cuda:0")
+        gpu_list = [0]
+    else:
+        add_info['device'] = torch.device("cpu")
     print(f"device: {add_info['device']}")
     
     ## Generate dataloders: dataloader_dict.keys -> 'train', 'val', 'test'
-    dataloader_dict = getDataloaders(args, add_info)
+    dataloader_dict = get_dataloaders(args, add_info)
         
     ## Try getting a batch from the test Dataloader
     if args.test_dataloader:
-        testDataloader(dataloader_dict['test'], 
-                       add_info['results_dir'], 
-                       add_info['batch_size'], 
-                       add_info['task_list'])
+        test_dataloader(dataloader_dict['test'], 
+                        add_info['results_dir'], 
+                        add_info['batch_size'], 
+                        add_info['task_list'])
         
     # Define the loss function
     if args.label_type in ['hard', 'soft']:
@@ -111,12 +113,11 @@ if __name__ == "__main__":
         loss_fn = torch.nn.MSELoss(reduction='mean')
                 
     # Create a ModuleDict model
-    model = getModel(args.model_name, 
-                     add_info['num_classes'], 
-                     add_info['task_list'], 
-                     args.use_pretrained_weight, 
-                     args.freeze_backbone)
-    
+    model = get_model(args.model_name, 
+                      add_info['num_classes'], 
+                      add_info['task_list'], 
+                      args.use_pretrained_weight, 
+                      args.freeze_backbone)
     
     # Define the LightningModule
     class LitVGG16(pl.LightningModule):
@@ -179,7 +180,7 @@ if __name__ == "__main__":
     trainer = pl.Trainer(max_epochs=args.num_epochs, 
                          logger=logger,
                          callbacks=[checkpoint_callback],
-                         devices=[add_info['device']], 
+                         devices=gpu_list, 
                          log_every_n_steps=dataloader_dict['train'].__len__(),
                          accelerator="gpu")
 
@@ -188,7 +189,9 @@ if __name__ == "__main__":
                 val_dataloaders=dataloader_dict['val'])
     
     # Load the best model
-    trained_model = LitVGG16.load_from_checkpoint(checkpoint_callback.best_model_path, model=model, loss_fn=loss_fn)
+    trained_model = LitVGG16.load_from_checkpoint(checkpoint_callback.best_model_path, 
+                                                  model=model, 
+                                                  loss_fn=loss_fn)
     
     # Test the model
     labels_test_true, labels_test_predicted, proba_test_predicted = test_model(trained_model, 

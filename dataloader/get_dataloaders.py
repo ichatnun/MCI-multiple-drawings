@@ -6,11 +6,11 @@ from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
 
 # Return: a dictionary of dataloaders with the keys: 'train', 'val', 'test'
-def getDataloaders(args, add_info):
+def get_dataloaders(args, add_info):
         
     if add_info['dataset_name'].lower() == 'multiDrawingMCI'.lower():
         
-        from .datasets.multiDrawingMCI import MultiDrawingMCIDataset2022, makeTransformMultiDrawingMCIDataset2022        
+        from .datasets.multiDrawingMCI import MultiDrawingMCIDataset2022, make_transform_multi_drawing_mci_dataset2022        
         
         # Adjustable parameters
         dataset_dir = os.path.join(os.getcwd(), 'data', 'multiDrawingMCI2022')
@@ -59,7 +59,7 @@ def getDataloaders(args, add_info):
         for curr_split_mode in ['train', 'val', 'test']:
             
             # Create data and target transformations
-            transform, target_transform = makeTransformMultiDrawingMCIDataset2022(args, add_info, curr_split_mode)
+            transform, target_transform = make_transform_multi_drawing_mci_dataset2022(args, add_info, curr_split_mode)
             
             # Create PyTorch Datasets
             curr_dataset = MultiDrawingMCIDataset2022(dataset_dir,

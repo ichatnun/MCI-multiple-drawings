@@ -89,7 +89,7 @@ class MultiDrawingMCIDataset2022(Dataset):
         plt.close()
 
 
-def makeTransformMultiDrawingMCIDataset2022(args, add_info, split_mode='train'):
+def make_transform_multi_drawing_mci_dataset2022(args, add_info, split_mode='train'):
     
     # Create data transform
     if args.use_pretrained_weight:
