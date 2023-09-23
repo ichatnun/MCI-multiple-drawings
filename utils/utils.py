@@ -8,7 +8,7 @@ plt.rcParams["savefig.bbox"] = 'tight'
 import torch
 from torchvision.utils import make_grid
 import torchvision.transforms.functional as F
-from sklearn.metrics import precision_recall_fscore_support, classification_report
+from sklearn.metrics import precision_recall_fscore_support, classification_report, roc_auc_score
 
 
 # Make experiment name
@@ -63,71 +63,85 @@ def test_model(model, dataloader, device):
     model.eval()
     model.to(device)
 
-    labels_predicted_all = []
-    labels_true_all = []
-    proba_predicted_all = []
-
-    for inputs, labels in dataloader:
+    labels_true = []
+    probs_predicted = []
+    
+    for inputs, labels in dataloader: # labels: (batch, num_classes)
         
         for key, value in inputs.items():
             inputs[key] = inputs[key].to(device)
     
-        outputs = model(inputs) #(max val, max_indices)
-        proba, preds = torch.max(outputs, 1)
+        probs = model(inputs) # outputs: (batch, num_classes)
 
-        labels_true_all += labels.tolist()
-        labels_predicted_all += preds.detach().tolist()
-        proba_predicted_all += proba.detach().tolist()
-
-    return labels_true_all, labels_predicted_all, proba_predicted_all
+        # Combine the batches
+        labels_true.append(labels)
+        probs_predicted.append(probs.detach().cpu())
+    
+    # Convert a list of arrays to a single array
+    labels_true = torch.vstack(labels_true) # (num_samples, num_classes)
+    probs_predicted = torch.vstack(probs_predicted) # (num_samples, num_classes)
+    
+    return labels_true, probs_predicted
     
     
-def save_evaluation(labels_true,
-                    labels_predicted, 
-                    proba_predicted, 
+def save_evaluation(labels_true, # (num_samples, num_classes)
+                    probs_predicted, # (num_samples, num_classes)
                     results_dir, 
                     class_list):
     
-    # Deal with one-hot/soft labels
-    if not isinstance(labels_true[0], int):
-        labels_true = [np.argmax(x) for x in labels_true]
+    # Convert from probabilities to integers
+    _, labels_true_int = torch.max(labels_true, 1) # labels_true_int: (batch, )
+    
+    # Convert from probabilities to integers 
+    probs_of_predicted_class, labels_predicted_int = torch.max(probs_predicted, 1) # probs_of_predicted_class, labels_predicted_int: (batch, )
         
-    precision, recall, fscore, _ = precision_recall_fscore_support(labels_true, labels_predicted)
+    # Compute several evaluation metrics
+    eval_metrics_dict = classification_report(labels_true_int,
+                                              labels_predicted_int,
+                                              target_names=class_list, 
+                                              output_dict=True)
+    accuracy = eval_metrics_dict['accuracy']
+    precision_macro = eval_metrics_dict['macro avg']['precision']
+    recall_macro = eval_metrics_dict['macro avg']['recall']
+    f1_score_macro = eval_metrics_dict['macro avg']['f1-score']
+    precision_weighted = eval_metrics_dict['weighted avg']['precision']
+    recall_weighted = eval_metrics_dict['weighted avg']['recall']
+    f1_score_weighted = eval_metrics_dict['weighted avg']['f1-score']
+
+    # Compute AUC
+    auc = roc_auc_score(labels_true, probs_predicted)
     
-    accuracy = np.sum(np.array(labels_true)==np.array(labels_predicted))/len(labels_true)
-    
-    # Save results
-    df = pd.DataFrame({'true': labels_true,
-                       'predicted': labels_predicted,
-                       'prob': proba_predicted})
-    df.to_csv(os.path.join(results_dir,
-                           'predictions.csv'),index=False)
-    
+    ## Save results
+    # Save evaluation metrics in a text file
     with open(os.path.join(results_dir, 'eval_metrics.txt'), "w") as f:
-        # f.write(f"best val loss = {best_val_loss}\n")
-        f.write(f"accuracy = {accuracy}\n")
-        f.write(f"precision = {precision}\n")
-        f.write(f"recall = {recall}\n")
-        f.write(f"fscore = {fscore}\n")
-        f.write(classification_report(
-            labels_true,
-            labels_predicted,
-            target_names=class_list))
+        f.write(f"accuracy = {accuracy:.2f}\n")
+        f.write(f"precision (macro) = {precision_macro:.2f}\n")
+        f.write(f"recall (macro) = {recall_macro:.2f}\n")
+        f.write(f"f1-score (macro) = {f1_score_macro:.2f}\n")
+        f.write(f"auc = {auc:.2f}\n")
+        f.write(f"accuracy = {accuracy:.2f}\n")
+        f.write(f"precision (weighted) = {precision_weighted:.2f}\n")
+        f.write(f"recall (weighted) = {recall_weighted:.2f}\n")
+        f.write(f"f1-score (weighted) = {f1_score_weighted:.2f}\n")
+        f.write(classification_report(labels_true_int,
+                                      labels_predicted_int,
+                                      target_names=class_list))
         
-        
-
-# class SoftLabelCrossEntropyLoss(torch.nn.Module):
+    # Save evaluation metrics in a csv file
+    df = pd.DataFrame({'accuracy': accuracy,
+                       'f1-score (macro)': f1_score_macro,
+                       'auc': auc,
+                       'precision (macro)': precision_macro,
+                       'recall (macro)':recall_macro,
+                       'f1-score (weighted)': f1_score_weighted,
+                       'precision (weighted)': precision_weighted,
+                       'recall (weighted)':recall_weighted}, index=[0])
+    df.to_csv(os.path.join(results_dir,
+                           'eval_metrics.csv'), index=False)
     
-#     def __init__(self, reduction='sum'):
-#         super(SoftLabelCrossEntropyLoss, self).__init__()
-#         self.log_softmax = LogSoftmax(dim=1)
-#         self.reduction = reduction
-        
-#     def forward(self,prediction,target):
-#         pred_log_softmax = self.log_softmax(prediction)
-#         loss_each_sample = -(pred_log_softmax*target).sum(axis=1)
-#         if self.reduction == 'mean':
-#             return loss_each_sample.sum(axis=0)/loss_each_sample.shape[0]
-#         else: # default: reduction = 'sum'
-#             return loss_each_sample.sum(axis=0)
-
+    # Save predictions
+    df = pd.DataFrame({'true': labels_true_int,
+                       'predicted': labels_predicted_int,
+                       'prob': probs_of_predicted_class})
+    df.to_csv(os.path.join(results_dir,
+                           'predictions.csv'), index=False)

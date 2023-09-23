@@ -29,6 +29,7 @@ if __name__ == "__main__":
     parser.add_argument('--test_fraction', default=0.15, type=float)
     parser.add_argument('--num_epochs', default=100, type=int)
     parser.add_argument('--exp_name', default='', type=str)
+    parser.add_argument('--gpu_id', default=0, type=int)
     
     # Model config
     parser.add_argument('--model_name', 
@@ -90,11 +91,12 @@ if __name__ == "__main__":
     ## Detect if we have a GPU available
     if torch.cuda.is_available():
         num_gpus = torch.cuda.device_count() 
-        add_info['device'] = torch.device(f"cuda:{num_gpus-1}")
-        gpu_list = [num_gpus-1]
+        add_info['device'] = torch.device(f"cuda:{args.gpu_id}")
+        gpu_list = [args.gpu_id]
+        print(f"device: {torch.cuda.get_device_name(args.gpu_id)}")
     else:
         add_info['device'] = torch.device("cpu")
-    print(f"device: {add_info['device']}")
+    
     
     ## Generate dataloders: dataloader_dict.keys -> 'train', 'val', 'test'
     dataloader_dict = get_dataloaders(args, add_info)
@@ -119,7 +121,7 @@ if __name__ == "__main__":
                       add_info['task_list'], 
                       args.use_pretrained_weight, 
                       args.freeze_backbone)
-    
+
     # Define the LightningModule
     class LitVGG16(pl.LightningModule):
         
@@ -130,8 +132,6 @@ if __name__ == "__main__":
             self.softmax = torch.nn.Softmax(dim=1)
 
         def training_step(self, batch, batch_idx):
-            # training_step defines the train loop.
-            # it is independent of forward
             x, y = batch
             logits_predicted = self.model(x) # Without softmax
                 
@@ -147,8 +147,6 @@ if __name__ == "__main__":
             return self.softmax(logits_predicted)
         
         def validation_step(self, batch, batch_idx):
-            # training_step defines the train loop.
-            # it is independent of forward
             x, y = batch
             logits_predicted = self.model(x) # Without softmax
 
@@ -195,12 +193,12 @@ if __name__ == "__main__":
                                                   loss_fn=loss_fn)
     
     # Test the model
-    labels_test_true, labels_test_predicted, proba_test_predicted = test_model(trained_model, 
-                                                                               dataloader_dict['test'], 
-                                                                               add_info['device'])
+    labels_true, probs_predicted = test_model(trained_model, 
+                                              dataloader_dict['test'],
+                                              add_info['device'])
+    
     # Save evaluation metrics    
-    save_evaluation(labels_test_true,
-                    labels_test_predicted, 
-                    proba_test_predicted,
+    save_evaluation(labels_true,
+                    probs_predicted,
                     add_info['results_dir'], 
                     add_info['class_list'])

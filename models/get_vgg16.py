@@ -13,9 +13,8 @@ class VGG16Backbone(torch.nn.Module):
         else:
             vgg16_model = vgg16(weights=None)
             
-        final_num_channels = vgg16_model.features[-3].out_channels    
-        self.backbone = Sequential(*list(vgg16_model.features.children()),
-                                   Conv2d(final_num_channels, self.hidden_dim, kernel_size=1))
+        self.final_num_channels = vgg16_model.features[-3].out_channels    
+        self.backbone = Sequential(*list(vgg16_model.features.children()))
 
         if freeze_backbone:
             for param in self.backbone.parameters():
@@ -29,8 +28,8 @@ class VGG16Backbone(torch.nn.Module):
         x = x.mean([2, 3]) # Global average pooling
         return x #(batch_size, 512)
     
-    def get_hidden_dim(self):
-        return self.hidden_dim
+    def get_final_num_channels(self):
+        return self.final_num_channels
     
     
 class multiInputVGG16(torch.nn.Module):
@@ -51,8 +50,8 @@ class multiInputVGG16(torch.nn.Module):
                                                                freeze_backbone)
             
         # Create the final layer
-        hidden_dim_one_task = self.model_module_dict[curr_task].get_hidden_dim()    
-        self.final = Linear(hidden_dim_one_task*len(task_list),
+        final_num_channels_one_task = self.model_module_dict[curr_task].get_final_num_channels()    
+        self.final = Linear(final_num_channels_one_task*len(task_list),
                             num_classes,
                             bias=True)
 

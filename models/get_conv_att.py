@@ -37,3 +37,7 @@ class multiInputConvAtt(torch.nn.Module):
     
         # Pass the concatenated results to the linear classifier (without softmax)
         return self.final(x_concat)
+    
+    
+        # self.backbone = Sequential(*list(vgg16_model.features.children()),
+        #                            Conv2d(final_num_channels, self.hidden_dim, kernel_size=1))
