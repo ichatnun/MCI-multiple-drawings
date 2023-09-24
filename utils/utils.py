@@ -70,16 +70,25 @@ def test_model(model, dataloader, device):
         
         for key, value in inputs.items():
             inputs[key] = inputs[key].to(device)
-    
+        
         probs = model(inputs) # outputs: (batch, num_classes)
-
+    
+        # Move 'probs' to cpu
+        probs = probs.detach().cpu()
+        
         # Combine the batches
         labels_true.append(labels)
-        probs_predicted.append(probs.detach().cpu())
+        probs_predicted.append(probs)
+        
+        # Delete unused variables
+        del inputs, probs
+        torch.cuda.empty_cache()
     
     # Convert a list of arrays to a single array
     labels_true = torch.vstack(labels_true) # (num_samples, num_classes)
     probs_predicted = torch.vstack(probs_predicted) # (num_samples, num_classes)
+    
+    model.to("cpu")
     
     return labels_true, probs_predicted
     
@@ -109,7 +118,7 @@ def save_evaluation(labels_true, # (num_samples, num_classes)
     f1_score_weighted = eval_metrics_dict['weighted avg']['f1-score']
 
     # Compute AUC
-    auc = roc_auc_score(labels_true, probs_predicted)
+    auc = roc_auc_score(soft_to_hard_labels(labels_true), probs_predicted)
     
     ## Save results
     # Save evaluation metrics in a text file
@@ -145,3 +154,12 @@ def save_evaluation(labels_true, # (num_samples, num_classes)
                        'prob': probs_of_predicted_class})
     df.to_csv(os.path.join(results_dir,
                            'predictions.csv'), index=False)
+    
+def soft_to_hard_labels(labels_soft):
+    labels_hard = torch.zeros_like(labels_soft)
+    
+    _, max_indices = torch.max(labels_soft, dim=1)
+    for idx in range(labels_soft.shape[0]):
+        labels_hard[idx, max_indices[idx]] = 1.0
+        
+    return labels_hard

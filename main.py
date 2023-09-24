@@ -96,8 +96,7 @@ if __name__ == "__main__":
         print(f"device: {torch.cuda.get_device_name(args.gpu_id)}")
     else:
         add_info['device'] = torch.device("cpu")
-    
-    
+
     ## Generate dataloders: dataloader_dict.keys -> 'train', 'val', 'test'
     dataloader_dict = get_dataloaders(args, add_info)
         
@@ -158,8 +157,9 @@ if __name__ == "__main__":
             return loss
 
         def configure_optimizers(self):
-            return torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-
+            return torch.optim.SGD(model.parameters(), 
+                                   lr=0.001, 
+                                   momentum=0.9)
 
     # Create the model
     modelLit = LitVGG16(model, loss_fn)
@@ -172,7 +172,7 @@ if __name__ == "__main__":
                                           filename='{epoch}-{val_loss:.2f}', 
                                           monitor='val_loss',
                                           mode='min',
-                                          save_top_k=2, 
+                                          save_top_k=1, 
                                           every_n_epochs=1)
     
     # Train the model
@@ -186,7 +186,10 @@ if __name__ == "__main__":
     trainer.fit(model=modelLit, 
                 train_dataloaders=dataloader_dict['train'], 
                 val_dataloaders=dataloader_dict['val'])
-    
+
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        
     # Load the best model
     trained_model = LitVGG16.load_from_checkpoint(checkpoint_callback.best_model_path, 
                                                   model=model, 
@@ -202,3 +205,6 @@ if __name__ == "__main__":
                     probs_predicted,
                     add_info['results_dir'], 
                     add_info['class_list'])
+    
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
