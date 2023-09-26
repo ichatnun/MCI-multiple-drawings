@@ -39,6 +39,7 @@ if __name__ == "__main__":
     parser.add_argument('--config_file', default='', type=str)
     parser.add_argument('--use_pretrained_weight', default=False, action='store_true')
     parser.add_argument('--freeze_backbone', default=False, action='store_true')
+    parser.add_argument('--add_weight_to_loss', default=False, action='store_true')
     
     # Data and labels
     parser.add_argument('--include_clock', default=False, action='store_true')
@@ -98,7 +99,7 @@ if __name__ == "__main__":
         add_info['device'] = torch.device("cpu")
 
     ## Generate dataloders: dataloader_dict.keys -> 'train', 'val', 'test'
-    dataloader_dict = get_dataloaders(args, add_info)
+    dataloader_dict, label_distribution_train = get_dataloaders(args, add_info)
         
     ## Try getting a batch from the test Dataloader
     if args.test_dataloader:
@@ -109,7 +110,12 @@ if __name__ == "__main__":
         
     # Define the loss function
     if args.label_type in ['hard', 'soft']:
-        loss_fn = torch.nn.CrossEntropyLoss(reduction='mean')
+        if args.add_weight_to_loss:
+            loss_weight = 1/label_distribution_train
+            loss_weight = loss_weight/np.sum(loss_weight)
+            loss_fn = torch.nn.CrossEntropyLoss(weight=torch.Tensor(loss_weight), reduction='mean')
+        else:
+            loss_fn = torch.nn.CrossEntropyLoss(reduction='mean')
     elif args.label_type == 'raw':
         add_info['num_classes'] = 1
         loss_fn = torch.nn.MSELoss(reduction='mean')

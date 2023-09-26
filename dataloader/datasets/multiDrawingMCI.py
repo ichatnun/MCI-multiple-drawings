@@ -17,7 +17,8 @@ class MultiDrawingMCIDataset2022(Dataset):
                  transform=None, 
                  target_transform=None, 
                  task_list=['clock', 'copy', 'trail'], 
-                 label_type='hard'):
+                 label_type='hard',
+                 healthy_threshold=25):
         
         self.dataset_dir = dataset_dir
         self.data_info_df = data_info_df # Shape: (IDs, MoCA scores)
@@ -25,6 +26,7 @@ class MultiDrawingMCIDataset2022(Dataset):
         self.target_transform = target_transform
         self.task_list = task_list
         self.label_type = label_type
+        self.healthy_threshold = healthy_threshold
 
         
     def __len__(self):
@@ -88,6 +90,20 @@ class MultiDrawingMCIDataset2022(Dataset):
                     dpi=150)
         plt.close()
 
+        
+    def get_label_distribution(self):
+        raw_MoCA_scores = self.data_info_df.iloc[:, 1].to_numpy()
+        labels = (raw_MoCA_scores < self.healthy_threshold)*1.0 
+
+        labels_dist = np.zeros(len(np.unique(labels)),)
+        num_samples = len(labels)
+        for idx_class, curr_class in enumerate(np.unique(labels)):
+            num_curr_class = np.count_nonzero(labels == curr_class)
+            labels_dist[idx_class] = num_curr_class/num_samples
+            
+        return labels_dist
+        
+        
 
 def make_transform_multi_drawing_mci_dataset2022(args, add_info, split_mode='train'):
     

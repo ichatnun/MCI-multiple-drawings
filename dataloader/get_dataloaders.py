@@ -35,10 +35,8 @@ def get_dataloaders(args, add_info):
             os.system(f"wget -P {dataset_dir} https://github.com/cccnlab/MCI-multiple-drawings/raw/main/label.csv")
             print("*************** Done ***************\n")
             
-        
         # Load label into a Pandas dataframe
         data_info_df = pd.read_csv(label_path) # (IDs, MoCA scores) 
-        
         
         # Train, val, test split
         split_info_df = {}
@@ -67,7 +65,12 @@ def get_dataloaders(args, add_info):
                                                       transform,
                                                       target_transform,
                                                       add_info['task_list'],
-                                                      args.label_type)
+                                                      args.label_type,
+                                                      add_info['healthy_threshold'])
+            
+            # Get the class distribution of the training data
+            if curr_split_mode == 'train':
+                label_distribution_train = curr_dataset.get_label_distribution()
             
             # Save the Datasets stats
             curr_dataset.display_dataset_stats(add_info['results_dir'], 
@@ -87,4 +90,4 @@ def get_dataloaders(args, add_info):
                                                              shuffle=True,
                                                              drop_last=False)
 
-        return dataloader_dict
+        return dataloader_dict, label_distribution_train
