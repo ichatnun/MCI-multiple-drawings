@@ -28,6 +28,7 @@ if __name__ == "__main__":
     parser.add_argument('--val_fraction', default=0.15, type=float)
     parser.add_argument('--test_fraction', default=0.15, type=float)
     parser.add_argument('--num_epochs', default=100, type=int)
+    parser.add_argument('--batch_size', default=64, type=int)
     parser.add_argument('--exp_name', default='', type=str)
     parser.add_argument('--gpu_id', default=0, type=int)
     
@@ -61,8 +62,7 @@ if __name__ == "__main__":
     # Create a dictionary to store additional info
     add_info = {'dataset_name': 'multiDrawingMCI',
                 'idx2class_dict': {'0': 'control', '1': 'mci'},
-                'healthy_threshold': 25, # MoCA score of >= 25-> healthy
-                'batch_size': 64}
+                'healthy_threshold': 25} # MoCA score of >= 25-> healthy
     add_info['class_list'] = [add_info['idx2class_dict'][key] for key in add_info['idx2class_dict'].keys()]
     add_info['num_classes'] = len(add_info['idx2class_dict'].keys())
     
@@ -105,7 +105,7 @@ if __name__ == "__main__":
     if args.test_dataloader:
         test_dataloader(dataloader_dict['test'], 
                         add_info['results_dir'], 
-                        add_info['batch_size'], 
+                        args.batch_size, 
                         add_info['task_list'])
         
     # Define the loss function

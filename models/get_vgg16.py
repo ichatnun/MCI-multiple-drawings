@@ -24,9 +24,7 @@ class VGG16Backbone(torch.nn.Module):
                 param.requires_grad = True
     
     def forward(self, x):
-        x = self.backbone(x)
-        x = x.mean([2, 3]) # Global average pooling
-        return x #(batch_size, 512)
+        return self.backbone(x) # (batch, 512, 8, 8)
     
     def get_final_num_channels(self):
         return self.final_num_channels
@@ -50,7 +48,7 @@ class multiInputVGG16(torch.nn.Module):
                                                                freeze_backbone)
             
         # Create the final layer
-        final_num_channels_one_task = self.model_module_dict[curr_task].get_final_num_channels()    
+        final_num_channels_one_task = self.model_module_dict[self.task_list[0]].get_final_num_channels()    
         self.final = Linear(final_num_channels_one_task*len(task_list),
                             num_classes,
                             bias=True)
@@ -59,7 +57,9 @@ class multiInputVGG16(torch.nn.Module):
         
         # Concatenate the output(s) obtained from the backbone(s)
         for idx_task, curr_task in enumerate(self.task_list):
-            x_backbone_processed = self.model_module_dict[curr_task](x[curr_task])
+            x_backbone_processed = self.model_module_dict[curr_task](x[curr_task]) # (batch, 512, 8, 8)
+            x_backbone_processed = x_backbone_processed.mean([2, 3]) # Global average pooling: (batch_size, 512)
+
             if idx_task == 0:
                 x_concat = x_backbone_processed
             else:

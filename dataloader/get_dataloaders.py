@@ -79,13 +79,13 @@ def get_dataloaders(args, add_info):
             # Create PyTorch Dataloaders
             if curr_split_mode in ['test', 'val']:
                 dataloader_dict[curr_split_mode]= DataLoader(curr_dataset, 
-                                                             add_info['batch_size'],
+                                                             args.batch_size,
                                                              num_workers=args.num_workers,
                                                              shuffle=False, 
                                                              drop_last=False)
             else:
                 dataloader_dict[curr_split_mode]= DataLoader(curr_dataset, 
-                                                             add_info['batch_size'],
+                                                             args.batch_size,
                                                              num_workers=args.num_workers,
                                                              shuffle=True,
                                                              drop_last=False)
