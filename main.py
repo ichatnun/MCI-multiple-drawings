@@ -58,17 +58,17 @@ if __name__ == "__main__":
     
     ## Processing the arguments
     args = parser.parse_args()
-    
+        
     # Create a dictionary to store additional info
-    add_info = {'dataset_name': 'multiDrawingMCI',
-                'idx2class_dict': {'0': 'control', '1': 'mci'},
-                'healthy_threshold': 25} # MoCA score of >= 25-> healthy
-    add_info['class_list'] = [add_info['idx2class_dict'][key] for key in add_info['idx2class_dict'].keys()]
-    add_info['num_classes'] = len(add_info['idx2class_dict'].keys())
+    dataset_name = 'multiDrawingMCI'
+    idx2class_dict = {'0': 'control', '1': 'mci'}
+    healthy_threshold = 25 # MoCA score of >= 25-> healthy
+    class_list = [idx2class_dict[key] for key in idx2class_dict.keys()]
+    num_classes = len(idx2class_dict.keys())
     
     # Create 'results' folder (Ex. results/multidrawingmci/EXP_...)
-    add_info['results_dir'] = os.path.join('results', make_exp_name(args.exp_name))
-    os.makedirs(add_info['results_dir'], exist_ok=False)
+    results_dir = os.path.join('results', make_exp_name(args.exp_name))
+    os.makedirs(results_dir, exist_ok=False)
     
     # Check val and test fractions
     if args.val_fraction + args.test_fraction >= 1:
@@ -81,32 +81,42 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # Create task_list
-    add_info['task_list'] = []
+    task_list = []
     if args.include_clock:
-        add_info['task_list'].append('clock')
+        task_list.append('clock')
     if args.include_copy:
-        add_info['task_list'].append('copy')
+        task_list.append('copy')
     if args.include_trail:
-        add_info['task_list'].append('trail')
+        task_list.append('trail')
         
     ## Detect if we have a GPU available
     if torch.cuda.is_available():
         num_gpus = torch.cuda.device_count() 
-        add_info['device'] = torch.device(f"cuda:{args.gpu_id}")
+        device = torch.device(f"cuda:{args.gpu_id}")
         gpu_list = [args.gpu_id]
         print(f"device: {torch.cuda.get_device_name(args.gpu_id)}")
     else:
-        add_info['device'] = torch.device("cpu")
+        device = torch.device("cpu")
 
     ## Generate dataloders: dataloader_dict.keys -> 'train', 'val', 'test'
-    dataloader_dict, label_distribution_train = get_dataloaders(args, add_info)
+    dataloader_dict, label_distribution_train = get_dataloaders(args.use_pretrained_weight, 
+                                                                args.label_type, 
+                                                                args.val_fraction, 
+                                                                args.test_fraction, 
+                                                                args.random_seed,
+                                                                args.batch_size, 
+                                                                args.num_workers, 
+                                                                dataset_name, 
+                                                                healthy_threshold,
+                                                                task_list, 
+                                                                results_dir)
         
     ## Try getting a batch from the test Dataloader
     if args.test_dataloader:
         test_dataloader(dataloader_dict['test'], 
-                        add_info['results_dir'], 
+                        results_dir, 
                         args.batch_size, 
-                        add_info['task_list'])
+                        task_list)
         
     # Define the loss function
     if args.label_type in ['hard', 'soft']:
@@ -117,13 +127,13 @@ if __name__ == "__main__":
         else:
             loss_fn = torch.nn.CrossEntropyLoss(reduction='mean')
     elif args.label_type == 'raw':
-        add_info['num_classes'] = 1
+        num_classes = 1
         loss_fn = torch.nn.MSELoss(reduction='mean')
                 
     # Create a ModuleDict model
     model = get_model(args.model_name, 
-                      add_info['num_classes'], 
-                      add_info['task_list'], 
+                      num_classes, 
+                      task_list, 
                       args.use_pretrained_weight, 
                       args.freeze_backbone)
 
@@ -171,10 +181,10 @@ if __name__ == "__main__":
     modelLit = LitVGG16(model, loss_fn)
 
     # Prepare logger
-    logger = CSVLogger(save_dir=add_info['results_dir'])
+    logger = CSVLogger(save_dir=results_dir)
     
     # Prepare callbacks
-    checkpoint_callback = ModelCheckpoint(dirpath=add_info['results_dir'], 
+    checkpoint_callback = ModelCheckpoint(dirpath=results_dir, 
                                           filename='{epoch}-{val_loss:.2f}', 
                                           monitor='val_loss',
                                           mode='min',
@@ -204,13 +214,13 @@ if __name__ == "__main__":
     # Test the model
     labels_true, probs_predicted = test_model(trained_model, 
                                               dataloader_dict['test'],
-                                              add_info['device'])
+                                              device)
     
     # Save evaluation metrics    
     save_evaluation(labels_true,
                     probs_predicted,
-                    add_info['results_dir'], 
-                    add_info['class_list'])
+                    results_dir, 
+                    class_list)
     
     if torch.cuda.is_available():
         torch.cuda.empty_cache()

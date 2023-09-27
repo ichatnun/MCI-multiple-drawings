@@ -105,22 +105,25 @@ class MultiDrawingMCIDataset2022(Dataset):
         
         
 
-def make_transform_multi_drawing_mci_dataset2022(args, add_info, split_mode='train'):
+def make_transform_multi_drawing_mci_dataset2022(use_pretrained_weight, 
+                                                 label_type, 
+                                                 healthy_threshold, 
+                                                 split_mode='train'):
     
     # Create data transform
-    if args.use_pretrained_weight:
+    if use_pretrained_weight:
         # Source https://pytorch.org/vision/0.8/models.html 
         # "All pre-trained models expect input images normalized in the same way, i.e. mini-batches of 3-channel RGB images of shape (3 x H x W), where H and W are expected to be at least 224. The images have to be loaded in to a range of [0, 1] and then normalized using mean = [0.485, 0.456, 0.406] and std = [0.229, 0.224, 0.225]"
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     
     if split_mode in ['test', 'val']:
-        if args.use_pretrained_weight:
+        if use_pretrained_weight:
             transform = normalize
         else:
             transform = None
     else:
         # Hard-coded 280 and 256, following the original paper (Ruengchaijatuporn et al. 2022)
-        if args.use_pretrained_weight:
+        if use_pretrained_weight:
             transform = transforms.Compose([CustomPad(280),
                                             transforms.RandomCrop(256),
                                             normalize])
@@ -129,15 +132,14 @@ def make_transform_multi_drawing_mci_dataset2022(args, add_info, split_mode='tra
                                             transforms.RandomCrop(256)])
                                                                                   
     # Create target transform
-    if args.label_type == 'raw':
+    if label_type == 'raw':
         target_transform = None
-    elif args.label_type == 'soft':
+    elif label_type == 'soft':
         # [p(control), p(mci)]
-        target_transform = Lambda(lambda x: get_soft_label(x, add_info['healthy_threshold']))
+        target_transform = Lambda(lambda x: get_soft_label(x, healthy_threshold))
     else:
         # Healthy control = 0, MCI = 1
-        target_transform = Lambda(lambda x: get_hard_label(x, add_info['healthy_threshold'])) # 2-output-node version
-        # target_transform = Lambda(lambda x: 1 if x < add_info['healthy_threshold'] else 0) # 1-output-node version       
+        target_transform = Lambda(lambda x: get_hard_label(x, healthy_threshold)) # 2-output-node version     
                                                                                   
     return transform, target_transform
     

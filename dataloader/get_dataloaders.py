@@ -6,15 +6,25 @@ from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
 
 # Return: a dictionary of dataloaders with the keys: 'train', 'val', 'test'
-def get_dataloaders(args, add_info):
+def get_dataloaders(use_pretrained_weight, 
+                    label_type, 
+                    val_fraction, 
+                    test_fraction, 
+                    random_seed, 
+                    batch_size, 
+                    num_workers, 
+                    dataset_name, 
+                    healthy_threshold, 
+                    task_list, 
+                    results_dir):
         
-    if add_info['dataset_name'].lower() == 'multiDrawingMCI'.lower():
+    if dataset_name.lower() == 'multiDrawingMCI'.lower():
         
         from .datasets.multiDrawingMCI import MultiDrawingMCIDataset2022, make_transform_multi_drawing_mci_dataset2022        
         
         # Adjustable parameters
         dataset_dir = os.path.join(os.getcwd(), 'data', 'multiDrawingMCI2022')
-        train_fraction = 1 - args.val_fraction - args.test_fraction
+        train_fraction = 1 - val_fraction - test_fraction
         label_path = os.path.join(os.getcwd(), 'data', 'multiDrawingMCI2022', 'label.csv')
         
         # Create the 'data' directory if it does not exist
@@ -41,52 +51,56 @@ def get_dataloaders(args, add_info):
         # Train, val, test split
         split_info_df = {}
         split_info_df['train'], split_info_df['test'] = train_test_split(data_info_df, 
-                                                       test_size=args.test_fraction, 
-                                                       random_state=args.random_seed, 
-                                                       shuffle=True,
-                                            stratify=data_info_df.iloc[:,-1] >= add_info['healthy_threshold'])
+                                                                         test_size=test_fraction, 
+                                                                         random_state=random_seed, 
+                                                                         shuffle=True,
+                                                                         stratify=data_info_df.iloc[:,-1] >= healthy_threshold)
         
-        split_info_df['train'], split_info_df['val'] = train_test_split(split_info_df['train'], 
-                                               test_size=args.val_fraction/(1 - args.test_fraction), 
-                                               random_state=args.random_seed, 
-                                               shuffle=True,
-                                    stratify=split_info_df['train'].iloc[:,-1] >= add_info['healthy_threshold'])
+        split_info_df['train'], split_info_df['val'] = train_test_split(split_info_df['train'],
+                                                                        test_size=val_fraction/(1 - test_fraction), 
+                                                                        random_state=random_seed, 
+                                                                        shuffle=True,
+                                                                        stratify=split_info_df['train'].iloc[:,-1] >= healthy_threshold)
         
         # Train, val, test Datasets and corresponding Dataloaders
         dataloader_dict = {}
         for curr_split_mode in ['train', 'val', 'test']:
             
             # Create data and target transformations
-            transform, target_transform = make_transform_multi_drawing_mci_dataset2022(args, add_info, curr_split_mode)
+            transform, target_transform = make_transform_multi_drawing_mci_dataset2022(use_pretrained_weight, 
+                                                                                       label_type, 
+                                                                                       healthy_threshold,
+                                                                                       curr_split_mode)
+
             
             # Create PyTorch Datasets
             curr_dataset = MultiDrawingMCIDataset2022(dataset_dir,
                                                       split_info_df[curr_split_mode],
                                                       transform,
                                                       target_transform,
-                                                      add_info['task_list'],
-                                                      args.label_type,
-                                                      add_info['healthy_threshold'])
+                                                      task_list,
+                                                      label_type,
+                                                      healthy_threshold)
             
             # Get the class distribution of the training data
             if curr_split_mode == 'train':
                 label_distribution_train = curr_dataset.get_label_distribution()
             
             # Save the Datasets stats
-            curr_dataset.display_dataset_stats(add_info['results_dir'], 
+            curr_dataset.display_dataset_stats(results_dir, 
                                                curr_split_mode)
             
             # Create PyTorch Dataloaders
             if curr_split_mode in ['test', 'val']:
                 dataloader_dict[curr_split_mode]= DataLoader(curr_dataset, 
-                                                             args.batch_size,
-                                                             num_workers=args.num_workers,
+                                                             batch_size,
+                                                             num_workers=num_workers,
                                                              shuffle=False, 
                                                              drop_last=False)
             else:
                 dataloader_dict[curr_split_mode]= DataLoader(curr_dataset, 
-                                                             args.batch_size,
-                                                             num_workers=args.num_workers,
+                                                             batch_size,
+                                                             num_workers=num_workers,
                                                              shuffle=True,
                                                              drop_last=False)
 

@@ -3,6 +3,7 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 plt.rcParams["savefig.bbox"] = 'tight'
 
 import torch
@@ -120,6 +121,17 @@ def save_evaluation(labels_true, # (num_samples, num_classes)
     # Compute AUC
     auc = roc_auc_score(soft_to_hard_labels(labels_true), probs_predicted)
     
+    # Generate and save the confusion matrix
+    fig = plt.figure(figsize=(3,3))
+    ax = fig.add_subplot()
+    disp = ConfusionMatrixDisplay.from_predictions(labels_true_int, 
+                                                   labels_predicted_int, 
+                                                   labels=np.unique(labels_true_int),
+                                                   cmap=plt.cm.Blues, 
+                                                   display_labels=class_list, 
+                                                   ax=ax)
+    disp.figure_.savefig(os.path.join(results_dir, 'confusion_matrix.jpg'), dpi=150)
+    
     ## Save results
     # Save evaluation metrics in a text file
     with open(os.path.join(results_dir, 'eval_metrics.txt'), "w") as f:
@@ -154,6 +166,7 @@ def save_evaluation(labels_true, # (num_samples, num_classes)
                        'prob': probs_of_predicted_class})
     df.to_csv(os.path.join(results_dir,
                            'predictions.csv'), index=False)
+    
     
 def soft_to_hard_labels(labels_soft):
     labels_hard = torch.zeros_like(labels_soft)
