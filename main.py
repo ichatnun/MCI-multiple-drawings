@@ -14,81 +14,18 @@ from models.get_model import get_model
 from dataloader.get_dataloaders import get_dataloaders
 from utils.utils import make_exp_name, test_dataloader, test_model, save_evaluation
 
+def run_one_seed(args, 
+                 dataset_name, 
+                 healthy_threshold, 
+                 class_list, 
+                 num_classes, 
+                 random_seed,
+                 task_list,
+                 results_exp_dir):
 
-if __name__ == "__main__":
+    results_dir = make_exp_name(os.path.join(results_exp_dir, str(random_seed)))
+    os.makedirs(results_dir, exist_ok=True)
     
-    print(f"PyTorch Version: {torch.__version__}")
-    print(f"Torchvision Version: {torchvision.__version__}")
-
-    ## Arguments
-    parser = argparse.ArgumentParser()
-    
-    # Experimental setup
-    parser.add_argument('--random_seed', default=777, type=int)
-    parser.add_argument('--val_fraction', default=0.15, type=float)
-    parser.add_argument('--test_fraction', default=0.15, type=float)
-    parser.add_argument('--num_epochs', default=100, type=int)
-    parser.add_argument('--batch_size', default=64, type=int)
-    parser.add_argument('--exp_name', default='', type=str)
-    parser.add_argument('--gpu_id', default=0, type=int)
-    
-    # Model config
-    parser.add_argument('--model_name', 
-                        default='vgg16', 
-                        type=str, 
-                        help="Available options: 'vgg16', 'conv-att'")
-    parser.add_argument('--config_file', default='', type=str)
-    parser.add_argument('--use_pretrained_weight', default=False, action='store_true')
-    parser.add_argument('--freeze_backbone', default=False, action='store_true')
-    parser.add_argument('--add_weight_to_loss', default=False, action='store_true')
-    
-    # Data and labels
-    parser.add_argument('--include_clock', default=False, action='store_true')
-    parser.add_argument('--include_copy', default=False, action='store_true')
-    parser.add_argument('--include_trail', default=False, action='store_true')
-    parser.add_argument('--label_type', 
-                        default='soft', 
-                        type=str, 
-                        help="Options: 'raw', 'hard', 'soft'")
-    parser.add_argument('--test_dataloader', 
-                        default=False, 
-                        action='store_true',
-                        help="Set to True to get a sample batch (to test out the dataloader)")
-    parser.add_argument('--num_workers', default=8, type=int)
-    
-    ## Processing the arguments
-    args = parser.parse_args()
-        
-    # Create a dictionary to store additional info
-    dataset_name = 'multiDrawingMCI'
-    idx2class_dict = {'0': 'control', '1': 'mci'}
-    healthy_threshold = 25 # MoCA score of >= 25-> healthy
-    class_list = [idx2class_dict[key] for key in idx2class_dict.keys()]
-    num_classes = len(idx2class_dict.keys())
-    
-    # Create 'results' folder (Ex. results/multidrawingmci/EXP_...)
-    results_dir = os.path.join('results', make_exp_name(args.exp_name))
-    os.makedirs(results_dir, exist_ok=False)
-    
-    # Check val and test fractions
-    if args.val_fraction + args.test_fraction >= 1:
-        print('Invalid training fraction')
-        sys.exit(1)
-        
-    # Check if at least one task is specified
-    if not (args.include_clock or args.include_copy or args.include_trail):
-        print('No valid task specified')
-        sys.exit(1)
-
-    # Create task_list
-    task_list = []
-    if args.include_clock:
-        task_list.append('clock')
-    if args.include_copy:
-        task_list.append('copy')
-    if args.include_trail:
-        task_list.append('trail')
-        
     ## Detect if we have a GPU available
     if torch.cuda.is_available():
         num_gpus = torch.cuda.device_count() 
@@ -103,7 +40,7 @@ if __name__ == "__main__":
                                                                 args.label_type, 
                                                                 args.val_fraction, 
                                                                 args.test_fraction, 
-                                                                args.random_seed,
+                                                                random_seed,
                                                                 args.batch_size, 
                                                                 args.num_workers, 
                                                                 dataset_name, 
@@ -224,3 +161,108 @@ if __name__ == "__main__":
     
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
+        
+
+if __name__ == "__main__":
+    
+    print(f"PyTorch Version: {torch.__version__}")
+    print(f"Torchvision Version: {torchvision.__version__}")
+
+    ## Arguments
+    parser = argparse.ArgumentParser()
+    
+    # Experimental setup
+    parser.add_argument('--num_seeds', default=10, type=int)
+    parser.add_argument('--val_fraction', default=0.15, type=float)
+    parser.add_argument('--test_fraction', default=0.15, type=float)
+    parser.add_argument('--num_epochs', default=100, type=int)
+    parser.add_argument('--batch_size', default=64, type=int)
+    parser.add_argument('--exp_name', default='', type=str)
+    parser.add_argument('--gpu_id', default=0, type=int)
+    
+    # Model config
+    parser.add_argument('--model_name', 
+                        default='vgg16', 
+                        type=str, 
+                        help="Available options: 'vgg16', 'conv-att'")
+    parser.add_argument('--config_file', default='', type=str)
+    parser.add_argument('--use_pretrained_weight', default=False, action='store_true')
+    parser.add_argument('--freeze_backbone', default=False, action='store_true')
+    parser.add_argument('--add_weight_to_loss', default=False, action='store_true')
+    
+    # Data and labels
+    parser.add_argument('--include_clock', default=False, action='store_true')
+    parser.add_argument('--include_copy', default=False, action='store_true')
+    parser.add_argument('--include_trail', default=False, action='store_true')
+    parser.add_argument('--label_type', 
+                        default='soft', 
+                        type=str, 
+                        help="Options: 'raw', 'hard', 'soft'")
+    parser.add_argument('--test_dataloader', 
+                        default=False, 
+                        action='store_true',
+                        help="Set to True to get a sample batch (to test out the dataloader)")
+    parser.add_argument('--num_workers', default=8, type=int)
+    
+    ## Processing the arguments
+    args = parser.parse_args()
+ 
+    # Check val and test fractions
+    if args.val_fraction + args.test_fraction >= 1:
+        print('Invalid training fraction')
+        sys.exit(1)
+        
+    # Check if at least one task is specified
+    if not (args.include_clock or args.include_copy or args.include_trail):
+        print('No valid task specified')
+        sys.exit(1)
+     
+    # Create task_list
+    task_list = []
+    if args.include_clock:
+        task_list.append('clock')
+    if args.include_copy:
+        task_list.append('copy')
+    if args.include_trail:
+        task_list.append('trail')
+        
+    # Create a dictionary to store additional info    
+    dataset_name = 'multiDrawingMCI'
+    idx2class_dict = {'0': 'control', '1': 'mci'}
+    healthy_threshold = 25 # MoCA score of >= 25-> healthy
+    class_list = [idx2class_dict[key] for key in idx2class_dict.keys()]
+    num_classes = len(idx2class_dict.keys())
+    
+    # Create 'results' folder (Ex. results/multidrawingmci/EXP_...)
+    if len(task_list) == 3:
+        task_str = 'all'
+    else:
+        task_str = task_list[0]
+        for curr_task in task_list[1:]:
+            task_str += f"_{curr_task}"
+             
+    if args.exp_name:
+        results_exp_dir = os.path.join('results', 
+                                       f"{args.exp_name}_{task_str}",  
+                                       args.label_type, 
+                                       args.model_name)
+    else:
+        results_exp_dir = os.path.join('results', 
+                                       task_str,
+                                       args.label_type, 
+                                       args.model_name)
+
+    os.makedirs(results_exp_dir, exist_ok=True)
+
+    num_seeds = max(1, args.num_seeds)
+    list_of_seeds = np.arange(1024, 1024+num_seeds)
+    for idx_seed, curr_seed in enumerate(list_of_seeds):
+        run_one_seed(args, 
+                     dataset_name, 
+                     healthy_threshold, 
+                     class_list, 
+                     num_classes, 
+                     curr_seed,
+                     task_list,
+                     results_exp_dir)
+    print(f"Done: {idx_seed+1}/{num_seeds}")
