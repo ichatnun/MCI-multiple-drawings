@@ -25,7 +25,7 @@ class multiInputConvAtt(torch.nn.Module):
     
         backbone_num_channels = self.backbone_module_dict[self.task_list[0]].get_final_num_channels()  
         
-        # Create a 1x1 convolution that adjust the number of channels of the vector returned from the backbone
+        # Create a 1x1 convolution that adjusts the number of channels of the vector returned from the backbone
         self.conv1d = Conv2d(backbone_num_channels, self.hidden_dim_attn, kernel_size=1)
           
         # Create the [CLS] token (shared between the tasks): (batch, seq, feature)
@@ -63,13 +63,13 @@ class multiInputConvAtt(torch.nn.Module):
             # Swap the last two dims->(batch,seq,feature)=(batch,64,128)
             x_tokens = torch.transpose(x_tokens, -2, -1)
             
-            # Add the [CLS] token->(batch,seq,feature)=(batch,64+1,128)
+            # Add the [CLS] token->(batch,seq,feature)=(batch,1+64,128)
             x_tokens = torch.cat((self.CLS_token.tile(x_tokens.shape[0], 1, 1), x_tokens), dim=1)
             
-            # Perform self attention->(batch,seq,feature)=(batch,64+1,128)
+            # Perform self attention->(batch,seq,feature)=(batch,1+64,128)
             x_self_attn = self.transformer_enc(x_tokens)
             
-            # x_classif_token = 
+            # Get the final representation at the [CLS] location
             x_final_curr_task = x_self_attn[:, 0, :]
             
             # Combine the features from the tasks
