@@ -110,7 +110,7 @@ def run_one_seed(args,
             return loss
 
         def configure_optimizers(self):
-            return torch.optim.SGD(model.parameters(), 
+            return torch.optim.SGD(self.model.parameters(), 
                                    lr=0.001, 
                                    momentum=0.9)
 
